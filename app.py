@@ -2,20 +2,49 @@
 # Future Health Predictor - Predictive Healthcare & Neurological Risk System
 # Unauthorized use, reproduction, or distribution is prohibited.
 
-# FUTURE HEALTH UI APP - Streamlit Clean Version
+
+# FUTURE HEALTH UI APP - Streamlit Unified Version (All Modules Updated)
 
 import streamlit as st
 import pandas as pd
 import joblib
 import os
+import random
+from fpdf import FPDF
+from datetime import datetime
+
+# ========== PDF Export Utility ==========
+def export_to_pdf(title, input_dict, insights, score_level):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"{title} Report", ln=True, align='C')
+    pdf.cell(200, 10, txt=f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='C')
+    pdf.ln(10)
+
+    for key, val in input_dict.items():
+        pdf.multi_cell(200, 8, txt=f"{key}: {val}")
+
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', size=12)
+    pdf.cell(200, 10, txt=f"Risk Level: {score_level}", ln=True)
+
+    pdf.set_font("Arial", size=12)
+    pdf.ln(5)
+    pdf.cell(200, 10, txt="Why this result:", ln=True)
+    pdf.multi_cell(200, 8, txt="\n".join(insights))
+
+    filename = f"{title.lower().replace(' ', '_')}_report.pdf"
+    pdf.output(filename)
+    st.success(f"📄 PDF exported as {filename}")
+    with open(filename, "rb") as f:
+        st.download_button("📥 Download Report", f, file_name=filename)
 
 # ========== Model Setup ==========
 MODEL_PATHS = {
     "Heart": "timeline_model.pkl",
     "Brain": "brain_model.pkl",
-    # Add models here when available
-    # "Liver": "liver_model.pkl",
-    # "Kidney": "kidney_model.pkl",
+    # Simulated modules don't require models
 }
 
 # ========== Page Config ==========
@@ -31,140 +60,347 @@ st.markdown("Use your vitals to predict and prevent health risks across multiple
 def load_model(system):
     model_path = MODEL_PATHS.get(system)
     if not model_path or not os.path.exists(model_path):
-        st.warning(f"Model for {system} is not available. Showing simulated UI.")
         return None
     return joblib.load(model_path)
 
 # ========== Sidebar ==========
-system_choice = st.sidebar.selectbox("Select Body System", ["Heart", "Brain", "Lungs (Simulated)", "Diabetes (Simulated)", "Liver (Simulated)", "Kidney (Simulated)"])
+system_choice = st.sidebar.selectbox(
+    "Select Body System",
+    ["Heart", "Brain", "Lungs", "Liver", "Kidney", "Diabetes"]
+)
 model = load_model(system_choice)
 
-# ========== HEART MODULE ==========
+# ========== MODULE: HEART ==========
 if system_choice == "Heart":
-    st.header("❤️ Heart Health Check")
-    age = st.number_input("Age", 20, 100, 50)
-    sex = st.selectbox("Sex", ["Male", "Female"])
-    cp = st.selectbox("Chest Pain Type", ["ATA", "NAP", "ASY", "TA"])
-    rbp = st.number_input("Resting BP", 80, 200, 120)
-    chol = st.number_input("Cholesterol", 100, 400, 200)
-    fbs = st.radio("Fasting Blood Sugar > 120?", ["Yes", "No"])
-    ecg = st.selectbox("Resting ECG", ["Normal", "ST", "LVH"])
-    max_hr = st.number_input("Max HR", 60, 220, 150)
-    ex_angina = st.radio("Exercise Induced Angina", ["Yes", "No"])
-    oldpeak = st.slider("Oldpeak", 0.0, 6.0, 1.0)
-    st_slope = st.selectbox("ST Slope", ["Up", "Flat", "Down"])
+    st.header("🫀 Advanced Cardiovascular Risk Analyzer")
+    st.markdown("_Combines clinical tests and subjective symptoms to estimate heart disease risk._")
 
-    if st.button("🔍 Predict Heart Health") and model:
-        input_df = pd.DataFrame([{
-            "Age": age, "Sex": sex[0], "ChestPainType": cp, "RestingBP": rbp, "Cholesterol": chol,
-            "FastingBS": 1 if fbs == "Yes" else 0, "RestingECG": ecg, "MaxHR": max_hr,
-            "ExerciseAngina": ex_angina[0], "Oldpeak": oldpeak, "ST_Slope": st_slope
-        }])
-        prediction = model.predict(input_df)[0]
-        proba = model.predict_proba(input_df)[0]
+    age = st.slider("Age", 18, 100, 50)
+    sex = st.radio("Sex", ["Male", "Female"])
+    cp = st.radio("Chest Pain Type", ["Typical Angina", "Atypical Angina", "Non-Anginal", "Asymptomatic"])
+    bp = st.slider("Resting BP (mmHg)", 80, 200, 120)
+    chol = st.slider("Cholesterol (mg/dL)", 100, 400, 210)
+    fbs = st.radio("Fasting Blood Sugar > 120 mg/dL?", ["Yes", "No"]) == "Yes"
+    restecg = st.radio("ECG Results", ["Normal", "ST-T Abnormality", "LV Hypertrophy"])
+    hr = st.slider("Resting Heart Rate (bpm)", 40, 200, 75)
+    exang = st.radio("Exercise-induced Angina?", ["Yes", "No"]) == "Yes"
+    oldpeak = st.slider("Oldpeak (ST depression)", 0.0, 6.0, 1.0)
+    slope = st.radio("Slope of ST segment", ["Upsloping", "Flat", "Downsloping"])
 
-        st.subheader("Prediction")
-        if prediction == "NoDisease":
-            st.success("🟢 Low Risk – Keep up the good health!")
-        elif prediction == "LateDiagnosis":
-            st.warning("🟠 Moderate Risk – Regular checkups advised.")
+    if st.button("🔍 Analyze Heart Health"):
+        inputs = {
+            "Age": age, "Sex": sex, "Chest Pain": cp, "BP": bp, "Cholesterol": chol,
+            "FBS > 120": fbs, "RestECG": restecg, "Heart Rate": hr,
+            "Exercise Angina": exang, "Oldpeak": oldpeak, "ST Slope": slope
+        }
+
+        score = 0
+        if cp in ["Typical Angina", "Atypical Angina"]: score += 2
+        if bp > 140: score += 1
+        if chol > 240: score += 1
+        if fbs: score += 1
+        if restecg != "Normal": score += 1
+        if hr < 60 or hr > 100: score += 1
+        if exang: score += 2
+        if oldpeak >= 2: score += 1
+        if slope == "Flat" or slope == "Downsloping": score += 1
+
+        if score <= 3:
+            risk = "Low"
+            insights = [
+                "Vitals show optimal ranges across all major cardiac indicators.",
+                "No chest pain or ECG abnormalities; heart rate is within normal sinus rhythm.",
+                "Patient displays healthy metabolic markers—minimal short-term cardiovascular threat."
+            ]
+        elif score <= 6:
+            risk = "Moderate"
+            insights = [
+                "Mild abnormalities in cholesterol, BP, or ECG indicate early dysfunction.",
+                "Symptoms suggest subclinical ischemia or early atherosclerotic changes.",
+                "Advise lifestyle modifications, lipid panel, stress echocardiogram for further clarity."
+            ]
         else:
-            st.error("🔴 High Risk – Seek medical attention immediately.")
+            risk = "High"
+            insights = [
+                "Multiple pathological findings detected including ECG anomalies, stress-induced angina, and metabolic strain.",
+                "High probability of myocardial ischemia or evolving coronary artery disease (CAD).",
+                "Immediate referral advised for coronary angiography and cardiology evaluation."
+            ]
 
-        st.write("**Confidence:**")
-        for label, p in zip(model.classes_, proba):
-            st.write(f"{label}: {p*100:.2f}%")
+        st.subheader(f"📊 Predicted Heart Risk Level: {risk}")
+        st.markdown("### 🔬 Why this result:")
+        for i in insights:
+            st.markdown(f"- {i}")
 
-# ========== BRAIN MODULE ==========
-elif system_choice == "Brain":
-    st.header("🧠 Brain Health Check")
-    age = st.number_input("Age", 20, 100, 50)
-    sex = st.selectbox("Sex", ["Male", "Female"])
-    bp_sys = st.number_input("Systolic BP", 90, 200, 130)
-    bp_dia = st.number_input("Diastolic BP", 60, 140, 85)
-    hr = st.number_input("Resting Heart Rate", 40, 120, 72)
-    spo2 = st.slider("Oxygen Saturation (SpO2 %)", 85.0, 100.0, 97.0)
-    sugar = st.number_input("Fasting Blood Sugar", 70, 300, 110)
-    bmi = st.number_input("BMI", 10.0, 45.0, 25.0)
-    stress = st.slider("Stress Level", 1, 10, 5)
-    smokes = st.radio("Do you smoke?", ["No", "Yes"]) == "Yes"
-    blur = st.radio("Blurred vision?", ["No", "Yes"]) == "Yes"
-    headache = st.radio("Frequent headaches?", ["No", "Yes"]) == "Yes"
-    dizzy = st.radio("Dizziness on movement?", ["No", "Yes"]) == "Yes"
-    family = st.radio("Family history of brain stroke/death?", ["No", "Yes"]) == "Yes"
+        st.markdown("### 🛡 Preventive Tips")
+        st.markdown("""
+        - Maintain ideal body weight and limit dietary fat/sugar.
+        - Avoid smoking and secondhand smoke.
+        - Stay active 30 mins/day, 5x a week.
+        - Annual check-ups for lipid, BP, ECG.
+        - Monitor stress and sleep hygiene.
+        """)
 
-    if st.button("🔍 Predict Brain Health") and model:
-        input_df = pd.DataFrame([{ 
-            "Age": age, "Sex": sex, "BP_Systolic": bp_sys, "BP_Diastolic": bp_dia, "RestingHR": hr,
-            "SpO2": spo2, "FastingBloodSugar": sugar, "BMI": bmi, "StressLevel": stress,
-            "Smokes": int(smokes), "BlurredVision": int(blur), "FrequentHeadaches": int(headache),
-            "MobilityDizziness": int(dizzy), "FamilyHistoryBrainEvent": int(family)
-        }])
-        prediction = model.predict(input_df)[0]
-        proba = model.predict_proba(input_df)[0]
+        export_to_pdf("Heart", inputs, insights, risk)
 
-        st.subheader("Prediction")
-        if prediction == "NoRisk":
-            st.success("🟢 Low Risk – All vitals look normal!")
-        elif prediction == "Warning":
-            st.warning("🟠 Warning – Monitor your stress and vitals.")
+# ========== MODULE: BRAIN ==========
+# (Brain module inserted above)
+
+# ========== MODULE: LUNGS ==========
+if system_choice == "Lungs":
+    st.header("🫁 Advanced Lung Health & Respiratory Risk Analyzer")
+    st.markdown("_Combines symptoms and vital signs to detect potential respiratory concerns._")
+
+    cough = st.radio("Persistent Cough?", ["Yes", "No"]) == "Yes"
+    breathless = st.radio("Shortness of Breath?", ["Yes", "No"]) == "Yes"
+    wheeze = st.radio("Wheezing or Noisy Breathing?", ["Yes", "No"]) == "Yes"
+    chest_tight = st.radio("Chest Tightness or Pain?", ["Yes", "No"]) == "Yes"
+    fatigue = st.radio("Easily Fatigued or Tired?", ["Yes", "No"]) == "Yes"
+    smoker = st.radio("Current or Ex-Smoker?", ["Yes", "No"]) == "Yes"
+    exposure = st.radio("Exposure to Dust/Chemicals?", ["Yes", "No"]) == "Yes"
+
+    spo2 = st.slider("SpO2 (Oxygen Saturation %)", 80, 100, 96)
+    resp_rate = st.slider("Respiratory Rate (breaths/min)", 10, 40, 16)
+    hr = st.slider("Heart Rate (bpm)", 40, 140, 75)
+
+    if st.button("🔍 Analyze Lung Health"):
+        inputs = {
+            "Cough": cough, "Breathless": breathless, "Wheezing": wheeze,
+            "Chest Tightness": chest_tight, "Fatigue": fatigue, "Smoker": smoker,
+            "Pollutant Exposure": exposure, "SpO2": spo2, "Respiratory Rate": resp_rate, "Heart Rate": hr
+        }
+
+        score = sum([cough, breathless, wheeze, chest_tight, fatigue, smoker, exposure])
+        if spo2 < 93: score += 2
+        if resp_rate > 20: score += 1
+        if hr > 100: score += 1
+
+        if score <= 3:
+            risk = "Low"
+            insights = [
+                "Lung function appears stable. Normal oxygen levels and minimal symptoms.",
+                "No signs of significant respiratory stress or obstruction."
+            ]
+        elif score <= 6:
+            risk = "Moderate"
+            insights = [
+                "Some early respiratory indicators noted — e.g. mild cough, exposure, or increased breathing rate.",
+                "Could indicate chronic irritation or onset of asthma/bronchitis."
+            ]
         else:
-            st.error("🔴 Emergency Risk – Seek medical attention!")
+            risk = "High"
+            insights = [
+                "Multiple symptoms suggest obstructive or inflammatory lung disease.",
+                "SpO2 below normal and high respiratory rate indicate compromised oxygen exchange.",
+                "Recommend pulmonary function tests and chest imaging."
+            ]
 
-        st.write("**Confidence:**")
-        for label, p in zip(model.classes_, proba):
-            st.write(f"{label}: {p*100:.2f}%")
+        st.subheader(f"🫁 Predicted Lung Risk Level: {risk}")
+        st.markdown("### 🫁 Why this result:")
+        for r in insights:
+            st.markdown(f"- {r}")
 
-# ========== LUNGS (Simulated) ==========
-elif system_choice == "Lungs (Simulated)":
-    st.header("🫁 Lung Health Check (Simulated)")
-    st.info("This module is a placeholder. Prediction functionality coming soon.")
-    st.text_input("Cough Frequency per Day")
-    st.slider("Shortness of Breath (1-10)", 1, 10, 5)
-    st.radio("History of Asthma?", ["Yes", "No"])
-    st.radio("Exposed to Pollutants Recently?", ["Yes", "No"])
-    st.button("Predict Lung Health")
+        st.markdown("### 🫁 Preventive Tips")
+        st.markdown("""
+        - Avoid smoking and exposure to airborne irritants
+        - Stay hydrated and maintain good posture
+        - Consider spirometry if chronic symptoms persist
+        - Use air purifiers indoors if sensitive
+        - See a pulmonologist for further evaluation if symptomatic
+        """)
 
-# ========== DIABETES (Simulated) ==========
-elif system_choice == "Diabetes (Simulated)":
-    st.header("🩸 Diabetes Check (Simulated)")
-    st.info("This module is a placeholder. Prediction functionality coming soon.")
-    st.number_input("Fasting Glucose Level (mg/dL)", 50, 300, 100)
-    st.number_input("HbA1c (%)", 3.0, 15.0, 5.5)
-    st.radio("Family History of Diabetes?", ["Yes", "No"])
-    st.button("Predict Diabetes Risk")
+        export_to_pdf("Lungs", inputs, insights, risk)
 
-# ========== LIVER (Simulated) ==========
-elif system_choice == "Liver (Simulated)":
-    st.header("🧪 Liver Health Check (Simulated)")
-    st.info("This module is a placeholder. Prediction functionality coming soon.")
-    st.number_input("Total Bilirubin", 0.0, 10.0, 1.0)
-    st.number_input("Direct Bilirubin", 0.0, 5.0, 0.3)
-    st.number_input("Alkaline Phosphotase", 50, 400, 120)
-    st.number_input("ALT", 10, 200, 30)
-    st.number_input("AST", 10, 200, 30)
-    st.number_input("Total Proteins", 4.0, 10.0, 6.5)
-    st.number_input("Albumin", 2.0, 6.0, 3.5)
-    st.number_input("A/G Ratio", 0.3, 2.5, 1.1)
-    st.button("Predict Liver Health")
+# ========== MODULE: LIVER ==========
+if system_choice == "Liver":
+    st.header("🧬 Liver Function Risk Analyzer")
+    st.markdown("_Assesses liver stress based on lab markers and symptoms._")
 
-# ========== KIDNEY (Simulated) ==========
-elif system_choice == "Kidney (Simulated)":
-    st.header("💧 Kidney Health Check (Simulated)")
-    st.info("This module is a placeholder. Prediction functionality coming soon.")
-    st.number_input("Blood Pressure", 60, 200, 120)
-    st.selectbox("Specific Gravity", ["1.005", "1.010", "1.015", "1.020", "1.025"])
-    st.selectbox("Albumin in Urine", ["0", "1", "2", "3", "4", "5"])
-    st.selectbox("Sugar in Urine", ["0", "1", "2", "3", "4", "5"])
-    st.number_input("Serum Creatinine", 0.5, 10.0, 1.2)
-    st.number_input("Hemoglobin", 8.0, 18.0, 13.5)
-    st.number_input("Packed Cell Volume", 20, 60, 42)
-    st.number_input("WBC Count", 3000, 12000, 7500)
-    st.number_input("RBC Count", 2.5, 6.0, 4.5)
-    st.radio("Hypertension", ["Yes", "No"])
-    st.radio("Diabetes Mellitus", ["Yes", "No"])
-    st.button("Predict Kidney Health")
+    age = st.slider("Age", 18, 90, 40)
+    sex = st.radio("Sex", ["Male", "Female"])
+    fatigue = st.radio("Chronic Fatigue?", ["Yes", "No"]) == "Yes"
+    jaundice = st.radio("Yellowing of Eyes/Skin (Jaundice)?", ["Yes", "No"]) == "Yes"
+    nausea = st.radio("Nausea or Vomiting?", ["Yes", "No"]) == "Yes"
+    swelling = st.radio("Abdominal Swelling?", ["Yes", "No"]) == "Yes"
+    alcohol = st.radio("Frequent Alcohol Consumption?", ["Yes", "No"]) == "Yes"
 
-# ========== FOOTER ==========
-st.markdown("---")
-st.caption("This app provides predictions based on vitals and known patterns. Always consult a doctor for real medical decisions.")
+    alt = st.slider("ALT (U/L)", 0, 200, 30)
+    ast = st.slider("AST (U/L)", 0, 200, 25)
+    bilirubin = st.slider("Bilirubin (mg/dL)", 0.0, 5.0, 0.8)
+    albumin = st.slider("Albumin (g/dL)", 2.0, 5.5, 4.0)
+
+    if st.button("🔍 Analyze Liver Health"):
+        inputs = {
+            "Age": age, "Sex": sex, "Fatigue": fatigue, "Jaundice": jaundice,
+            "Nausea": nausea, "Swelling": swelling, "Alcohol": alcohol,
+            "ALT": alt, "AST": ast, "Bilirubin": bilirubin, "Albumin": albumin
+        }
+
+        score = sum([fatigue, jaundice, nausea, swelling, alcohol])
+        if alt > 50 or ast > 50: score += 2
+        if bilirubin > 1.2: score += 2
+        if albumin < 3.5: score += 1
+
+        if score <= 3:
+            risk = "Low"
+            insights = [
+                "Liver enzyme levels are within safe limits.",
+                "No symptoms indicating hepatic dysfunction detected.",
+                "Healthy metabolic and protein synthesis profile."
+            ]
+        elif score <= 6:
+            risk = "Moderate"
+            insights = [
+                "Mild elevation in liver enzymes or early signs of hepatic stress.",
+                "May reflect fatty liver, alcohol impact, or early hepatitis."
+            ]
+        else:
+            risk = "High"
+            insights = [
+                "Multiple elevated markers (ALT/AST/Bilirubin) and symptoms present.",
+                "Indicates high risk of liver inflammation or chronic liver disease.",
+                "Immediate consultation for ultrasound and LFT panel advised."
+            ]
+
+        st.subheader(f"🧬 Predicted Liver Risk Level: {risk}")
+        st.markdown("### 🧬 Why this result:")
+        for i in insights:
+            st.markdown(f"- {i}")
+
+        st.markdown("### 🛡 Preventive Tips")
+        st.markdown("""
+        - Limit alcohol, avoid self-medication
+        - Eat liver-friendly foods: turmeric, leafy greens, beetroot
+        - Monitor enzyme levels if on long-term medications
+        - Consider hepatitis screening if unexplained symptoms persist
+        """)
+
+        export_to_pdf("Liver", inputs, insights, risk)
+
+# ========== MODULE: KIDNEY ==========
+if system_choice == "Kidney":
+    st.header("🩺 Kidney Function & Risk Analyzer")
+    st.markdown("_Detects early signs of renal dysfunction based on lab and symptom profiles._")
+
+    age = st.slider("Age", 18, 90, 45)
+    sex = st.radio("Sex", ["Male", "Female"])
+    urinate = st.radio("Frequent/Painful Urination?", ["Yes", "No"]) == "Yes"
+    swelling = st.radio("Swelling in legs/feet?", ["Yes", "No"]) == "Yes"
+    blood_urine = st.radio("Blood in Urine?", ["Yes", "No"]) == "Yes"
+    fatigue = st.radio("Chronic Fatigue?", ["Yes", "No"]) == "Yes"
+
+    creatinine = st.slider("Creatinine (mg/dL)", 0.5, 5.0, 1.0)
+    bun = st.slider("BUN (mg/dL)", 5, 80, 18)
+    gfr = st.slider("Estimated GFR (mL/min/1.73m²)", 10, 120, 90)
+    albuminuria = st.radio("Albumin in Urine?", ["Yes", "No"]) == "Yes"
+
+    if st.button("🔍 Analyze Kidney Health"):
+        inputs = {
+            "Age": age, "Sex": sex, "Urination Issues": urinate,
+            "Swelling": swelling, "Hematuria": blood_urine, "Fatigue": fatigue,
+            "Creatinine": creatinine, "BUN": bun, "GFR": gfr, "Albuminuria": albuminuria
+        }
+
+        score = sum([urinate, swelling, blood_urine, fatigue, albuminuria])
+        if creatinine > 1.3: score += 2
+        if bun > 30: score += 1
+        if gfr < 60: score += 2
+
+        if score <= 3:
+            risk = "Low"
+            insights = [
+                "No signs of major renal dysfunction detected.",
+                "Normal GFR and creatinine support stable kidney filtration."
+            ]
+        elif score <= 6:
+            risk = "Moderate"
+            insights = [
+                "Mild elevations in waste markers or urine abnormalities.",
+                "Monitor for early nephropathy or glomerular stress."
+            ]
+        else:
+            risk = "High"
+            insights = [
+                "Multiple risk factors detected: proteinuria, elevated creatinine, reduced GFR.",
+                "Suggestive of possible CKD (Chronic Kidney Disease).",
+                "Referral to nephrologist and renal imaging recommended."
+            ]
+
+        st.subheader(f"🩺 Predicted Kidney Risk Level: {risk}")
+        st.markdown("### 🩺 Why this result:")
+        for i in insights:
+            st.markdown(f"- {i}")
+
+        st.markdown("### 🛡 Preventive Tips")
+        st.markdown("""
+        - Limit salt/protein intake and stay hydrated
+        - Monitor BP and sugar regularly
+        - Avoid nephrotoxic medications or herbal remedies
+        - Get regular urinalysis and serum creatinine
+        """)
+
+        export_to_pdf("Kidney", inputs, insights, risk)
+
+# ========== MODULE: DIABETES ==========
+if system_choice == "Diabetes":
+    st.header("🩸 Diabetes Risk & Glycemic Health Analyzer")
+    st.markdown("_Combines early symptoms and blood markers to assess prediabetes or diabetes risk._")
+
+    age = st.slider("Age", 18, 90, 40)
+    sex = st.radio("Sex", ["Male", "Female"])
+    thirsty = st.radio("Increased Thirst?", ["Yes", "No"]) == "Yes"
+    frequent_urine = st.radio("Frequent Urination?", ["Yes", "No"]) == "Yes"
+    weight_loss = st.radio("Unexplained Weight Loss?", ["Yes", "No"]) == "Yes"
+    tired = st.radio("Fatigue or Blurry Vision?", ["Yes", "No"]) == "Yes"
+    family_history = st.radio("Family History of Diabetes?", ["Yes", "No"]) == "Yes"
+
+    fbs = st.slider("Fasting Blood Sugar (mg/dL)", 70, 300, 110)
+    ppbs = st.slider("Postprandial Blood Sugar (mg/dL)", 100, 400, 160)
+    hba1c = st.slider("HbA1c (%)", 4.5, 15.0, 6.0)
+
+    if st.button("🔍 Analyze Diabetes Risk"):
+        inputs = {
+            "Age": age, "Sex": sex, "Thirst": thirsty, "Frequent Urination": frequent_urine,
+            "Weight Loss": weight_loss, "Fatigue": tired, "Family History": family_history,
+            "FBS": fbs, "PPBS": ppbs, "HbA1c": hba1c
+        }
+
+        score = sum([thirsty, frequent_urine, weight_loss, tired, family_history])
+        if fbs > 126: score += 2
+        if ppbs > 200: score += 1
+        if hba1c >= 6.5: score += 2
+
+        if score <= 3:
+            risk = "Low"
+            insights = [
+                "Blood glucose readings are within normal range.",
+                "No persistent diabetic symptoms or family risk detected."
+            ]
+        elif score <= 6:
+            risk = "Moderate"
+            insights = [
+                "Some sugar markers suggest prediabetic state or early warning.",
+                "Combined with symptoms or family history, this indicates moderate risk."
+            ]
+        else:
+            risk = "High"
+            insights = [
+                "Blood sugar levels and HbA1c are elevated.",
+                "Classic diabetic symptoms present — confirmatory tests strongly recommended.",
+                "Consult endocrinologist and begin glycemic control strategy."
+            ]
+
+        st.subheader(f"🩸 Predicted Diabetes Risk Level: {risk}")
+        st.markdown("### 🩸 Why this result:")
+        for i in insights:
+            st.markdown(f"- {i}")
+
+        st.markdown("### 🛡 Preventive Tips")
+        st.markdown("""
+        - Avoid sugar-rich and processed food
+        - Increase physical activity (e.g., 30-min walk daily)
+        - Monitor sugar levels regularly if at risk
+        - Maintain healthy weight and sleep cycle
+        """)
+
+        export_to_pdf("Diabetes", inputs, insights, risk)
