@@ -3,3 +3,4 @@ pandas
 scikit-learn
 fpdf
 joblib
+fpdf==1.7.2
