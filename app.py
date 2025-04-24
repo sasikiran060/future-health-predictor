@@ -1,9 +1,7 @@
 # © 2025 Sasi Kiran. All Rights Reserved.
 # Future Health Predictor - Predictive Healthcare & Neurological Risk System
 # Unauthorized use, reproduction, or distribution is prohibited.
-
-
-# FUTURE HEALTH UI APP - Streamlit Unified Version (All Modules Updated)
+# Future Health Predictor - Unified Streamlit App with All Modules
 
 import streamlit as st
 import pandas as pd
@@ -38,13 +36,13 @@ def export_to_pdf(title, input_dict, insights, score_level):
     pdf.output(filename)
     st.success(f"📄 PDF exported as {filename}")
     with open(filename, "rb") as f:
-        st.download_button("📥 Download Report", f, file_name=filename)
+        st.download_button("📅 Download Report", f, file_name=filename)
 
 # ========== Model Setup ==========
 MODEL_PATHS = {
     "Heart": "timeline_model.pkl",
     "Brain": "brain_model.pkl",
-    # Simulated modules don't require models
+    # Others are simulated
 }
 
 # ========== Page Config ==========
@@ -53,7 +51,7 @@ st.set_page_config(
     page_icon="🧬",
     layout="centered",
 )
-st.title("🧠🫀 Future Health Predictor")
+st.title("🧠🦠 Future Health Predictor")
 st.markdown("Use your vitals to predict and prevent health risks across multiple body systems.")
 
 # ========== Model Loader ==========
@@ -69,6 +67,75 @@ system_choice = st.sidebar.selectbox(
     ["Heart", "Brain", "Lungs", "Liver", "Kidney", "Diabetes"]
 )
 model = load_model(system_choice)
+
+# Insert all modules here
+
+# ========== MODULE: BRAIN ==========
+if system_choice == "Brain":
+    st.header("🧠 Advanced Brain Health & Neurological Risk Analyzer")
+    st.markdown("_Combines vital signs, cognitive symptoms, and family history to detect potential neurological risks like stroke, cognitive decline, or neurodegenerative disease._")
+
+    age = st.slider("Age", 18, 100, 45)
+    sex = st.radio("Sex", ["Male", "Female"])
+    headache = st.radio("Frequent or Severe Headaches?", ["Yes", "No"]) == "Yes"
+    blurred_vision = st.radio("Blurred or Double Vision?", ["Yes", "No"]) == "Yes"
+    confusion = st.radio("Episodes of Confusion or Memory Lapses?", ["Yes", "No"]) == "Yes"
+    numbness = st.radio("Numbness or Weakness in Limbs?", ["Yes", "No"]) == "Yes"
+    speech = st.radio("Slurred Speech or Difficulty Speaking?", ["Yes", "No"]) == "Yes"
+    sleep_issues = st.radio("Insomnia or Sleep Disturbances?", ["Yes", "No"]) == "Yes"
+    family_stroke = st.radio("Family History of Stroke or Brain Disease?", ["Yes", "No"]) == "Yes"
+    bp = st.slider("Blood Pressure (mmHg)", 80, 200, 125)
+    hr = st.slider("Heart Rate (bpm)", 40, 150, 75)
+    spo2 = st.slider("Oxygen Saturation (%)", 85, 100, 96)
+
+    if st.button("🔍 Analyze Brain Health"):
+        df_input = pd.DataFrame([{
+            'Age': age,
+            'Sex': sex,
+            'BP_Systolic': bp,
+            'BP_Diastolic': 80,
+            'RestingHR': hr,
+            'SpO2': spo2,
+            'FastingBloodSugar': 100,
+            'BMI': 26.0,
+            'StressLevel': 5,
+            'Smokes': 0,
+            'BlurredVision': int(blurred_vision),
+            'FrequentHeadaches': int(headache),
+            'MobilityDizziness': 0,
+            'FamilyHistoryBrainEvent': int(family_stroke)
+        }])
+
+        if model:
+            prediction = model.predict(df_input)[0]
+            if prediction == "NoRisk":
+                risk = "Low"
+                insights = [
+                    "Vitals and clinical markers are within optimal range.",
+                    "No neurological red flags detected based on current data."
+                ]
+            elif prediction == "Warning":
+                risk = "Moderate"
+                insights = [
+                    "Several warning signs of neurological stress detected.",
+                    "Suggest early imaging and stress evaluation."
+                ]
+            else:
+                risk = "High"
+                insights = [
+                    "Serious neurological risk markers present.",
+                    "Emergency evaluation required. Risk of stroke or neurovascular incident."
+                ]
+        else:
+            risk = "Unknown"
+            insights = ["⚠️ Brain model not found. Please upload 'brain_model.pkl'."]
+
+        st.subheader(f"🧠 Predicted Brain Risk Level: {risk}")
+        st.markdown("### 🧠 Why this result:")
+        for i in insights:
+            st.markdown(f"- {i}")
+
+        export_to_pdf("Brain", df_input.to_dict(orient='records')[0], insights, risk)
 
 # ========== MODULE: HEART ==========
 if system_choice == "Heart":
@@ -132,19 +199,7 @@ if system_choice == "Heart":
         for i in insights:
             st.markdown(f"- {i}")
 
-        st.markdown("### 🛡 Preventive Tips")
-        st.markdown("""
-        - Maintain ideal body weight and limit dietary fat/sugar.
-        - Avoid smoking and secondhand smoke.
-        - Stay active 30 mins/day, 5x a week.
-        - Annual check-ups for lipid, BP, ECG.
-        - Monitor stress and sleep hygiene.
-        """)
-
         export_to_pdf("Heart", inputs, insights, risk)
-
-# ========== MODULE: BRAIN ==========
-# (Brain module inserted above)
 
 # ========== MODULE: LUNGS ==========
 if system_choice == "Lungs":
@@ -199,15 +254,6 @@ if system_choice == "Lungs":
         st.markdown("### 🫁 Why this result:")
         for r in insights:
             st.markdown(f"- {r}")
-
-        st.markdown("### 🫁 Preventive Tips")
-        st.markdown("""
-        - Avoid smoking and exposure to airborne irritants
-        - Stay hydrated and maintain good posture
-        - Consider spirometry if chronic symptoms persist
-        - Use air purifiers indoors if sensitive
-        - See a pulmonologist for further evaluation if symptomatic
-        """)
 
         export_to_pdf("Lungs", inputs, insights, risk)
 
@@ -267,14 +313,6 @@ if system_choice == "Liver":
         for i in insights:
             st.markdown(f"- {i}")
 
-        st.markdown("### 🛡 Preventive Tips")
-        st.markdown("""
-        - Limit alcohol, avoid self-medication
-        - Eat liver-friendly foods: turmeric, leafy greens, beetroot
-        - Monitor enzyme levels if on long-term medications
-        - Consider hepatitis screening if unexplained symptoms persist
-        """)
-
         export_to_pdf("Liver", inputs, insights, risk)
 
 # ========== MODULE: KIDNEY ==========
@@ -330,14 +368,6 @@ if system_choice == "Kidney":
         st.markdown("### 🩺 Why this result:")
         for i in insights:
             st.markdown(f"- {i}")
-
-        st.markdown("### 🛡 Preventive Tips")
-        st.markdown("""
-        - Limit salt/protein intake and stay hydrated
-        - Monitor BP and sugar regularly
-        - Avoid nephrotoxic medications or herbal remedies
-        - Get regular urinalysis and serum creatinine
-        """)
 
         export_to_pdf("Kidney", inputs, insights, risk)
 
@@ -395,12 +425,5 @@ if system_choice == "Diabetes":
         for i in insights:
             st.markdown(f"- {i}")
 
-        st.markdown("### 🛡 Preventive Tips")
-        st.markdown("""
-        - Avoid sugar-rich and processed food
-        - Increase physical activity (e.g., 30-min walk daily)
-        - Monitor sugar levels regularly if at risk
-        - Maintain healthy weight and sleep cycle
-        """)
-
         export_to_pdf("Diabetes", inputs, insights, risk)
+
